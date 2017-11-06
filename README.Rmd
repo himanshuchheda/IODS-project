@@ -1,0 +1,20 @@
+---
+title: "Readme"
+author: Himanshu Chheda
+date: November 6, 2017
+output: html_document
+---
+*This course will enable me to become a data scientist*
+
+***
+> Things that I will learn
+
+  * Data science
+    1. Cleaning the data
+    2. Analyzing the data using various statistical methods
+  * Producing open and reproducible code
+    + Publishing code using RMarkdown
+    + Github
+    
+***
+[Github: himanshuchheda](https://github.com/himanshuchheda/IODS-project)
