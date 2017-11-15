@@ -1,7 +1,51 @@
-# Insert chapter 2 title here
+# Performing and Interpreting regression
 
-*Describe the work you have done this week and summarize your learning.*
+*This weeks work has been mainly related to data wrangling and running small regression analyses*
 
-- Describe your work and results clearly. 
-- Assume the reader has an introductory course level understanding of writing and reading R code as well as statistical methods
-- Assume the reader has no previous knowledge of your data or the more advanced methods you are using  
+- Reading the file
+```{R}
+  lrn14 <- read.table("~/Documents/GitHub/IODS-project/data/learning2014.txt", header = T, sep = "\t")
+  dim(lrn14)
+  str(lrn14)
+```
+- So the data has 166 rows/individuals and 7 variables. Gender is of type factor and Age and Points integers. Rest of the data has numeric values
+
+- Understanding the relationship between various variables
+
+```{R}
+library(GGally) # Loading library for plotting
+library(ggplot2) # Loading library for plotting
+p <- ggpairs(lrn14, mapping = aes(col = gender, alpha = 0.3), lower = list(combo = wrap("facethist", bins = 20)))
+p
+```
+
+- This plot shows the distribution of the variables. The colours refer to gender and show the correlation between each of the variables. Surface questions seem to be negatively correlated with all of the variables. Highest correlation is observed between points and attitude. There is difference between females and males overall as suggested by the density plots.
+
+
+- Fitting a linear regression model
+```{R}
+my_model <- lm(Points ~ attitude + stra + surf, data = lrn14)
+summary(my_model)
+final_model <- lm(Points ~ attitude, data = lrn14)
+summary(final_model)
+```
+
+- A linear regression model where points is the dependent variable and attitude, strategic questions and surface questions are the independent variables. Based on the summary, only attitude seems to be significantly associated with Points. Surface questions has negative correlation with Points as can be seen from the intercept. Based on the above interpretation, we create a final model which has only attitude in it. So basically, in the final model, we see that for every unit increase attitude, we see the Points increase by 3.53. Multiple R squared signifies how close are the points to the fitted model.
+
+- Performing model validation:
+```{R}
+par(mfrow = c(2,2))
+plot(my_model, which = 1)
+plot(my_model, which = 2)
+plot(my_model, which = 5)
+```
+
+- In linear regression, we also assume that the residuals have a constant variance. If this assumption is not true, it implies that the size of the error is dependent on independent variables. The first plot is done to test this parameter.
+- In linear regression, the most obvious assumption is that the variables are linearly associated with the dependent variable. However, it is also assumed that the errors would be normally distributed. The QQplot shows the normality of the residuals (Predicted value - actual value). 
+- The leverage plot shows how each of the observations affect the model. It is used to detect outliers. In our case, none of the points seem to be outliers. 
+
+
+
+
+
+
