@@ -1,0 +1,75 @@
+# Logistic Regression
+
+*This week's work has been mainly related to performing logistic regression in R*
+
+> Reading in the file & loading the required libraries
+
+``` {R}
+alc <- read.table("~/Documents/GitHub/IODS-project/data/alcohol_consumption.txt", header = T, sep = "\t")
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+```
+
+> Learning more about the data
+
+```{R}
+colnames(alc)
+dim(alc)
+```
+As can be seen above, this file has information about 382 individuals with 35 variables for each student. This data is regarding alcohol consumption and high school performance of two Portugese schools. This data also includes demographic information, student grades, social and school related features. We will perform a **logistic regression** comparing **students drinking high amounts of alcohol** *vs* **students drinking low amounts of alcohol**
+
+> Take a guess
+
+* Just for funsake, trying to guess 4 variables that may be associated with high alcohol usage:
+   + Freetime: More freetime, more likely are the students likely to drink more
+   + Absences: Higher absences may be associated with alcohol usage
+   + Sex: Male gender maybe associated with higher alcohol usage
+   + G3: Student grades might be an indicator of alcohol consumption. Lower grades may be indicator of higher alcohol usage. 
+
+> Exploring the data!
+
+  1. Using Barplots
+```{R}
+gather(alc) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar()
+```
+
+  2. Using cross-tabulations
+```{R}
+alc %>% group_by(high_use, sex) %>% summarise(count = n(), mean_grade = mean(G3))
+```
+
+  3. Using box-plots
+```{R}
+g1 <- ggplot(alc, aes(x = high_use, y = absences, col = sex)) + geom_boxplot() + ylab("Grades") + ggtitle("Absences")
+g2 <- ggplot(alc, aes(x = high_use, y = G3, col = sex)) + geom_boxplot() + ylab("Grades") + ggtitle("Grades")
+g3 <- ggplot(alc, aes(x = high_use, y = freetime, col = sex)) + geom_boxplot() + ylab("Freetime") + ggtitle("Freetime")
+grid.arrange(g3, g1, g2, ncol = 2)
+```
+
+Based on the above plots, it seems that all the averages for the variables seem to be much more different in males than in females. 
+
+> Performing logistic regression
+```{R}
+mod1 <- glm(high_use ~ freetime + absences + G3 + sex, data = alc, family = "binomial")
+summary(mod1)
+OR <- exp(coef(mod1))
+CI <- exp(confint(mod1))
+cbind(OR, CI)
+```
+
+As can be seen from above, all the speculative variables seem to be associated with high alcohol usage. The largest being for male, where the odds suggest that a male student is 2.42 times more likely to consume high_alcohol as compared to a female student. Freetime and absences also have odds ratio more than 1 indicating they are directly correlated with high alcohol consumption. Grades as expected are inversely correlated with high alcohol consumption.
+
+> Testing the predictive power of the model based on these 4 variables
+```{R}
+probabilities <- predict(mod1, type = "response")
+alc <- mutate(alc, probability = probabilities)
+alc <- mutate(alc, prediction = probability > 0.5)
+table(high_use = alc$high_use, prediction = alc$prediction) %>% prop.table()
+g <- ggplot(alc, aes(x = probability, y = high_use, col = prediction))
+g + geom_point()
+```
+
+As can be seen from the table and the plot, this model isn't optimal. The model error is ~25%. Furthermore, there is a high number of false negatives as compared to false positives. 
+
