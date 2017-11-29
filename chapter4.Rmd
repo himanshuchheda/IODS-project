@@ -1,0 +1,90 @@
+# Clustering and Classification
+
+*This week's work is related to classifying and clustering data*
+
+> Loading the dataset and the required libraries
+```{R}
+library(MASS)
+library(corrplot)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+data("Boston")
+```
+
+Exploring the structure and dimension of the dataset
+```{R}
+str(Boston)
+dim(Boston)
+```
+The Boston dataset contains information about housing in Boston, Mass. It's a relatively small dataset with only 506 observations and contains 14 variables. Some of these variables include crime rates, proportion of residential land zoned, nitric oxide concentration, average number of rooms per dwelling and so on.
+
+> Graphical overview of the dataset
+```{R}
+#pairs(Boston)
+gather(Boston) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar()
+cor_matrix<-cor(Boston)
+corrplot(cor_matrix %>% round(2), method="circle", type = "upper", cl.pos = "b", tl.pos = "d", tl.cex = 0.6)
+```
+
+As can be seen above, the variables follow different kinds of distributions. We have also calculated the correlations between these distributions. The highest correlation is between the variables "rad" and "tax" where rad stands for accessibility to radial highways. There also seems to be a high negative correlation between proportion of owner occupied units built prior to 1940 and weighted distance to one of the 5 working centres in Boston represented by variables "age" and "dis".
+
+> Standardizing the dataset
+```{R}
+boston_scaled <- scale(Boston)
+summary(boston_scaled)
+boston_scaled <- as.data.frame(boston_scaled)
+bins <- quantile(boston_scaled$crim)
+crime <- cut(boston_scaled$crim, breaks = bins, include.lowest = TRUE, labels = c("low", "med_low", "med_high", "high"))
+boston_scaled <- dplyr::select(boston_scaled, -crim)
+boston_scaled <- data.frame(boston_scaled, crime)
+ind <- sample(nrow(boston_scaled),  size = nrow(boston_scaled) * 0.8)
+train <- boston_scaled[ind,]
+test <- boston_scaled[-ind,]
+```
+
+Scaling helps in normalizing the continuous variables. This basically means that we subtract mean from all the values and divide by the standard deviation of that variable. Furthermore, we have created a categorical variable for crime using the quantiles as break points. We have further divided the dataset into training (80%) and test sets (20%). 
+
+> Creating Linear Discriminant Analysis model
+```{R}
+lda.fit <- lda(crime ~ ., data = train)
+lda.fit
+lda.arrows <- function(x, myscale = 1, arrow_heads = 0.1, color = "red", tex = 0.75, choices = c(1,2)){
+  heads <- coef(x)
+  arrows(x0 = 0, y0 = 0, 
+         x1 = myscale * heads[,choices[1]], 
+         y1 = myscale * heads[,choices[2]], col=color, length = arrow_heads)
+  text(myscale * heads[,choices], labels = row.names(heads), 
+       cex = tex, col=color, pos=3)
+}
+classes <- as.numeric(train$crime)
+plot(lda.fit, dimen = 2, col = classes, pch = classes)
+lda.arrows(lda.fit, myscale = 1)
+```
+
+> Predicting on the test data
+```{R}
+correct_classes <- test$crime
+test <- dplyr::select(test, -crime)
+lda.pred <- predict(lda.fit, newdata = test)
+table(correct = correct_classes, predicted = lda.pred$class)
+```
+
+Using the model fitted on the training data, we predict the classes for the test data and further calculated the accuracy of the model by comparing it to the real classes / data. We observe that we perform really well for the "high" class / the values lying in the 4th quantile. We accurately predict all well with 3 false positives. For the other classes, our prediction is not really good. Especially so for classes "med_low" and "med_high"
+
+> Clustering the data
+```{R}
+library(MASS)
+data("Boston")
+boston_scaled <- scale(Boston)
+boston_scaled <- as.data.frame(boston_scaled)
+dist_eu <- dist(boston_scaled, method = "euclidean")
+summary(dist_eu)
+k_max <- 10
+twcss <- sapply(1:k_max, function(k){kmeans(boston_scaled, k)$tot.withinss})
+qplot(x = 1:k_max, y = twcss, geom = 'line')
+km <-kmeans(boston_scaled, centers = 2)
+pairs(boston_scaled, col = km$cluster)
+```
+
+So we tried clustering the Boston dataset. We started off with not knowing what the ideal number of clusters would be. We first calculate the euclidean distances. We then create different models with 1 - 10 clusters. As can be seen from the plot, the total within sum of squares sees the biggest drop between 1 and 2 hence it seems that the ideal number of cluster for this dataset is 2. Based on the last plot, we see that some variables along with their interactions are very good at clustering such as the variable crime, whereas others aren't such as lstat.
