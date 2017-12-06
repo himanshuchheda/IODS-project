@@ -1,0 +1,86 @@
+# Dimensionality Reduction
+
+*This week we will explore dimensionality reduction techniques including PCA and MCA*
+
+> Loading the data and the required libraries for the analysis
+
+```{R}
+library(corrplot)
+library(dplyr)
+library(FactoMineR)
+library(GGally)
+library(ggplot2)
+library(tidyr)
+human <- read.table("~/Documents/GitHub/IODS-project/data/human.txt", header = T, sep = "\t", row.names = 1)
+str(human)
+dim(human)
+```
+
+- This data is from the United Nations Development Programme. This data contains information regarding Human Development Index. As can be seen above, we have information regarding 155 countries (row names) and we have 8 variables regarding all of these countries.
+- Edu.FM refers to the ratio of females with secondary education to males with secondary education
+- Labo.FM refers to the ratio of females labour force to male labour force
+- Edu.Exp refers to expected years of schooling
+- Life.Exp refers to the life expectancy
+- GNI refers to Gross National Income per capita
+- Mat.Mor refers to Maternal mortality ratio per 100,000 live births
+- Ado.Birth refers to the Adolescent birth rate per 1000 women between 15-19
+- Parli.F refers to the percentage of seats held by women in the parliament
+
+> Graphical overview of the data
+```{R}
+ggpairs(human)
+cor(human) %>% corrplot(title = "Correlation plot", type = "upper", tl.cex = 0.6)
+```
+
+- As can be seen above, education expectancy is more or less normally distributed. The other variables are either skewed to the left or to the right.
+- There is a high correlation of ~ 0.8 between life expectancy and education expectancy. Also, edufm is also positively correlated with education expectancy and life expectancy. 
+- As expected, there is a high negative correlation between life expectancy and Maternal mortality ratio.
+
+> Performing Principal Component Analysis
+```{R}
+pca_human <- prcomp(human)
+biplot(pca_human, choices = 1:2, cex = c(0.8,1), col = c("grey40", "deeppink2"))
+```
+
+- As this analysis has been performed on non-standardized data, the plot looks a bit rustic. It is clear that the first component has been based upon GNI and the other variables are almost indistinguishable on how they contribute to the first 2 PCs. Also the length of the arrow corresponding to GNI is so long showing that there's a large variance and the angle of the arrow suggesting that the correlation between PC1 and GNI is ~ -1. The second component is not easy to infer. Let's standardize the data to see if PCA works better.
+
+> Performing Principal Component Analysis (Standardized data)
+```{R}
+human_std <- scale(human)
+pca_human_std <- prcomp(human_std)
+summary(pca_human_std)
+biplot(pca_human_std, xlab = "PC1 (53.6%)", ylab = "PC2 (16.2%)",choices = 1:2, cex = c(0.8,1), col = c("grey40", "deeppink2"))
+```
+
+- Upon standardizing the variables, we now see a much better PCA plot.
+- PC1 is directly correlated with variables, Mat.Mor and Ado.Birth and inversely correlated variables, Life.Exp, Edu.Exp, GNI, Edu2.FM.
+- The angles of all the arrows are quite small indicating high correlations between PC1 and all the associated variables. Furthermore, in contrast to the non-standardized data, here we can see that GNI actually has low variance than first observed. This further emphasizes the importance of scaling the data.
+- PC2 is based upon Labo.FM and Parli.F. Both are positively correlated.
+- Interestingly, the correlations from the above correlation plots are very well represented in this PCA plot. As can be seen above, Labo.FM and Parli.F are almost uncorrelated with all the other variables and thus make up PC2 here.
+- After scaling the data, the first 2 principal components explain ~70% of the total variance in the data.
+
+> Multiple Correspondance Analysis
+
+- As this would require a dataset with categorical variables, we use the tea dataset.
+```{R}
+library(FactoMineR)
+library(dplyr)
+library(ggplot2)
+data(tea)
+#keep_columns <- c("Tea", "How", "how", "sugar", "where", "lunch")
+#tea_time <- select(tea, keep_columns)
+tea_time <- data.frame(tea$Tea, tea$How, tea$how, tea$sugar, tea$where, tea$lunch)
+summary(tea_time)
+str(tea_time)
+dim(tea_time)
+gather(tea_time) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar() + theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
+mca <- MCA(tea_time, graph = FALSE)
+summary(mca)
+plot(mca, invisible=c("var"))
+cats = apply(tea_time, 2, function(x) nlevels(as.factor(x)))
+mca_obs_df = data.frame(mca$ind$coord)
+mca_vars_df = data.frame(mca$var$coord, Variable = rep(names(cats), cats))
+ggplot(data=mca_vars_df, aes(x = Dim.1, y = Dim.2, label = rownames(mca_vars_df))) + geom_hline(yintercept = 0, colour = "black") + geom_vline(xintercept = 0, colour = "black") + geom_text(aes(colour=Variable)) + ggtitle("MCA plot")
+```
+
+- As can be seen from the above plot, how people drink tea and how the tea is packaged seem to be different from other categories. There seems to be largest variance in these categorical variables.
